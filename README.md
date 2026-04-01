@@ -131,6 +131,24 @@ Client → Controller → Service → Repository → Database (MySQL)
 
 ---
 
+## 🧩 Key Business Logic
+
+- Prevents overlapping bookings using time-based conflict detection
+- Enforces daily booking limits based on active subscriptions
+- Validates desk availability considering both bookings and maintenance blocks
+- Ensures atomic operations using transactional boundaries
+
+---
+
+## ⚡ Challenges Addressed
+
+- Handling concurrent booking conflicts
+- Designing flexible subscription validation
+- Maintaining data consistency with transactional operations
+- Structuring scalable service-layer validationsres atomic operations using transactional boundaries
+  
+---
+
 ## 🧱 Database Entities
 
 * User
