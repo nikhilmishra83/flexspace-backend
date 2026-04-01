@@ -228,18 +228,11 @@ Client → Controller → Service → Repository → Database (MySQL)
 ## 👨‍💻 Author
 
 **Nikhil Mishra**
-Backend Developer (Java + Spring Boot)
 
 ---
 
 ## ⭐ Final Note
 
-This project is not a simple CRUD system.
-It demonstrates:
+FlexSpace is designed as a practical backend system that reflects real-world requirements such as booking constraints, subscription validation, and transactional consistency.
 
-* Real-world system design
-* Business rule enforcement
-* Transaction-safe operations
-* Scalable backend architecture
-
-👉 Built with focus on **practical backend engineering skills**
+The architecture emphasizes clarity, scalability, and maintainability, making it a solid foundation for further enhancements like authentication, payments, and intelligent features.
