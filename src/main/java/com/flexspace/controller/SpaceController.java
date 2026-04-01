@@ -1,4 +1,4 @@
 package com.flexspace.controller;
 
-public class SapaceController {
+public class SpaceController {
 }
