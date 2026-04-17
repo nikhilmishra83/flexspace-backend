@@ -6,6 +6,7 @@ import com.flexspace.dto.BookingResponse;
 import com.flexspace.service.BookingService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,7 +16,6 @@ import java.util.List;
 public class BookingController {
 
     private final BookingService bookingService;
-    private static final Long DUMMY_USER_ID = 1L;
 
     public BookingController(BookingService bookingService) {
         this.bookingService = bookingService;
@@ -23,19 +23,25 @@ public class BookingController {
 
     // 1. Create Booking
     @PostMapping
-    public ResponseEntity<ApiResponse<BookingResponse>> createBooking(@Valid @RequestBody BookingRequest request) {
-        BookingResponse bookingResponse = bookingService.createBooking(DUMMY_USER_ID, request);
-        ApiResponse<BookingResponse> response =
-                new ApiResponse<>(true, "Booking created", bookingResponse);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<ApiResponse<BookingResponse>> createBooking(
+            @Valid @RequestBody BookingRequest request,
+            @AuthenticationPrincipal Long userId
+    ) {
+        BookingResponse bookingResponse =
+                bookingService.createBooking(userId, request);
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(true, "Booking created", bookingResponse)
+        );
     }
 
     // 2. Cancel Booking
     @PostMapping("/{id}/cancel")
     public ResponseEntity<ApiResponse<Void>> cancelBooking(
-            @PathVariable Long id
+            @PathVariable Long id,
+            @AuthenticationPrincipal Long userId
     ) {
-        bookingService.cancelBooking(id);
+        bookingService.cancelBooking(id,  userId );
 
         return ResponseEntity.ok(
                 new ApiResponse<>(true, "Booking cancelled", null)
@@ -45,9 +51,10 @@ public class BookingController {
     // 3. Get Booking by ID
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<BookingResponse>> getBookingById(
-            @PathVariable Long id
+            @PathVariable Long id,
+            @AuthenticationPrincipal Long userId
     ) {
-        BookingResponse response = bookingService.getBookingById(id);
+        BookingResponse response = bookingService.getBookingById(id, userId);
 
         return ResponseEntity.ok(
                 new ApiResponse<>(true, "Booking fetched", response)
@@ -56,9 +63,12 @@ public class BookingController {
 
     // 4. Get Bookings by User
     @GetMapping("/user")
-    public ResponseEntity<ApiResponse<List<BookingResponse>>> getBookingsByUser() {
+    public ResponseEntity<ApiResponse<List<BookingResponse>>> getBookingsByUser(
+            @AuthenticationPrincipal Long userId
+    ) {
+
         List<BookingResponse> bookings =
-                bookingService.getBookingsByUser(DUMMY_USER_ID);
+                bookingService.getBookingsByUser(userId);
 
         return ResponseEntity.ok(
                 new ApiResponse<>(true, "Bookings fetched", bookings)
@@ -67,17 +77,24 @@ public class BookingController {
 
     // 5. (Optional later) Get upcoming bookings
     @GetMapping("/user/upcoming")
-    public ResponseEntity<ApiResponse<List<BookingResponse>>> getUpcomingBookings() {
+    public ResponseEntity<ApiResponse<List<BookingResponse>>> getUpcomingBookings(
+            @AuthenticationPrincipal Long userId
+    ) {
+
+        List<BookingResponse> upcomingBookings = bookingService.getUpcomingBookings(userId);
         return ResponseEntity.ok(
-                new ApiResponse<>(true, "Upcoming bookings", null)
+                new ApiResponse<>(true, "Upcoming bookings", upcomingBookings)
         );
     }
 
     // 6. (Optional later) Get past bookings
     @GetMapping("/user/past")
-    public ResponseEntity<ApiResponse<List<BookingResponse>>> getPastBookings() {
+    public ResponseEntity<ApiResponse<List<BookingResponse>>> getPastBookings(
+            @AuthenticationPrincipal Long userId
+    ) {
+        List<BookingResponse> pastBookings = bookingService.getPastBookings(userId);
         return ResponseEntity.ok(
-                new ApiResponse<>(true, "Past bookings", null)
+                new ApiResponse<>(true, "Past bookings", pastBookings)
         );
     }
 }

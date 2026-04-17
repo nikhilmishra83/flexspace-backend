@@ -16,6 +16,19 @@ public class DeskRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    public void lockDeskById(Long deskId) {
+        String sql = "SELECT id FROM desk WHERE id = ? FOR UPDATE";
+        jdbcTemplate.queryForObject(sql, Long.class, deskId);
+    }
+    public void lockDeskById(List<Long> deskIds) {
+
+        String placeholders = String.join(",", deskIds.stream().map(id -> "?").toList());
+
+        String sql = "SELECT id FROM desk WHERE id IN (%s) FOR UPDATE".formatted(placeholders);
+
+        jdbcTemplate.query(sql, rs -> {}, deskIds.toArray());
+    }
+
     public Optional<Desk> findById(Long id) {
         String sql = "SELECT * FROM desk WHERE id = ?";
 

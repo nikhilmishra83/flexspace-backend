@@ -1,8 +1,9 @@
 package com.flexspace.dto;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 
-public class AuthRequest {
+public class UserRegistrationRequest {
 
     @NotBlank
     private String email;
@@ -10,6 +11,7 @@ public class AuthRequest {
     @NotBlank
     private String password;
 
+    @NotBlank
     private String name; // only for register
 
     public String getEmail() { return email; }

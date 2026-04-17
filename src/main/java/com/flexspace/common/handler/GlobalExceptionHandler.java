@@ -3,12 +3,16 @@ package com.flexspace.common.handler;
 import com.flexspace.common.ApiResponse;
 import com.flexspace.common.exception.BadRequestException;
 import com.flexspace.common.exception.ResourceNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ApiResponse<Void>> handleBadRequest(BadRequestException ex) {
@@ -37,7 +41,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex) {
-        ex.printStackTrace();
+//        ex.printStackTrace();
+        log.error("Unexpected error occurred", ex);
         return ResponseEntity.internalServerError()
                 .body(new ApiResponse<>(false, "Internal server error", null));
     }

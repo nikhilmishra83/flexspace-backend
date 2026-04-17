@@ -16,6 +16,7 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public class BookingRepository {
@@ -108,11 +109,11 @@ public class BookingRepository {
         jdbcTemplate.update(sql, status, id);
     }
 
-    public Booking findById(Long id) {
+    public Optional<Booking> findById(Long id) {
         String sql = "SELECT * FROM booking WHERE id = ?";
 
         List<Booking> list = jdbcTemplate.query(sql, bookingMapper, id);
 
-        return list.isEmpty() ? null : list.get(0);
+        return list.stream().findFirst();
     }
 }

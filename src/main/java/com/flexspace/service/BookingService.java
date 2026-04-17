@@ -1,5 +1,6 @@
 package com.flexspace.service;
 
+import com.flexspace.common.enums.BookingStatus;
 import com.flexspace.common.exception.BadRequestException;
 import com.flexspace.common.exception.ResourceNotFoundException;
 import com.flexspace.dto.BookingRequest;
@@ -18,6 +19,9 @@ import com.flexspace.repository.DeskUnavailabilityRepository;
 import com.flexspace.repository.SubscriptionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 @Service
 public class BookingService {
@@ -27,6 +31,8 @@ public class BookingService {
     private final BookingDeskRepository bookingDeskRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final DeskUnavailabilityRepository deskUnavailabilityRepository;
+
+    private static final Logger log = LoggerFactory.getLogger(BookingService.class);
 
 
 
@@ -71,33 +77,45 @@ public class BookingService {
     }
 
     private void validateDeskAvailability(BookingRequest request) {
+
         if (request.getDeskIds() == null || request.getDeskIds().isEmpty()) {
             throw new BadRequestException("At least one desk must be selected");
         }
+
         validateDesksExist(request.getDeskIds());
+        List<Long> deskIds = request.getDeskIds();
+        deskIds.sort(Long::compareTo);
+
+//        we are prefering lock one by one
+        for (Long deskId : deskIds) {
+            deskRepository.lockDeskById(deskId);
+        }
+//        deskRepository.lockDeskById(deskIds);
 
 
-        for (Long deskId : request.getDeskIds()) {
-            boolean deskUnavailable = deskUnavailabilityRepository.exists(deskId, request.getStartTime(), request.getEndTime());
-
-            if (deskUnavailable) {
-                throw new BadRequestException("Desk is unavailable");
-            }
-
-            boolean conflict = bookingDeskRepository.existsConflict(
-                    deskId,
+            boolean deskUnavailable = deskUnavailabilityRepository.exists(
+                    deskIds,
                     request.getStartTime(),
                     request.getEndTime()
             );
 
-            if (conflict) {
-                throw new BadRequestException("Desk already booked");
+            if (deskUnavailable) {
+                log.warn("Desk unavailable for request: {}", request.getDeskIds());
+                throw new BadRequestException("Desk is unavailable");
             }
 
+        boolean conflict = bookingDeskRepository.existsConflict(
+                deskIds,
+                request.getStartTime(),
+                request.getEndTime()
+        );
+
+        if (conflict) {
+            log.warn("Desk conflict detected ");
+            throw new BadRequestException("Desk already booked");
         }
 
     }
-
     private List<Subscription> validateSubscription(Long userId, LocalDate bookingDate) {
 
         List<Subscription> activeSubs = subscriptionRepository.findActiveSubscriptions(userId);
@@ -110,6 +128,7 @@ public class BookingService {
                 .toList();
 
         if (validSubs.isEmpty()) {
+            log.warn("No active subscription for userId: {}", userId);
             throw new BadRequestException("No active subscription for selected date");
         }
 
@@ -122,7 +141,7 @@ public class BookingService {
         booking.setUserId(userId);
         booking.setStartTime(request.getStartTime());
         booking.setEndTime(request.getEndTime());
-        booking.setStatus("CONFIRMED");
+        booking.setStatus(BookingStatus.CONFIRMED.name());
 
         return bookingRepository.save(booking);
     }
@@ -144,6 +163,7 @@ public class BookingService {
 
     @Transactional
     public BookingResponse createBooking(Long userId, BookingRequest request) {
+        log.info("Starting booking creation for userId: {}", userId);
 
         if (request.getStartTime().isBefore(LocalDateTime.now())) {
             throw new BadRequestException("Cannot book for past time");
@@ -162,18 +182,22 @@ public class BookingService {
         validateDailyLimit(userId, request);
         validateDeskAvailability(request);
 
+        log.info("Desk validation successful for userId: {}", userId);
+
         Booking booking = saveBooking(userId, request);
         saveBookingDesks(booking.getId(), request.getDeskIds());
 
+        log.info("Booking created successfully with id: {},  by user {}", booking.getId(), userId);
         return new BookingResponse(booking);
     }
 
-    public void cancelBooking(Long id) {
+    public void cancelBooking(Long id, Long userId) {
 
-        Booking booking = bookingRepository.findById(id);
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
 
-        if (booking == null) {
-            throw new ResourceNotFoundException("Booking not found");
+        if (!booking.getUserId().equals(userId)) {
+            throw new BadRequestException("You cannot cancel this booking");
         }
 
         if ("CANCELLED".equals(booking.getStatus())) {
@@ -185,22 +209,40 @@ public class BookingService {
         }
 
         bookingRepository.updateStatus(id, "CANCELLED");
+        log.info("Booking {} cancelled by user {}", id, userId);
     }
 
-    public BookingResponse getBookingById(Long id) {
+    public BookingResponse getBookingById(Long id,Long  userId) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
 
-        Booking booking = bookingRepository.findById(id);
-
-        if (booking == null) {
-            throw new ResourceNotFoundException("Booking not found");
+        if (!booking.getUserId().equals(userId)) {
+            throw new BadRequestException("Unauthorized");
         }
-
         return new BookingResponse(booking);
     }
 
     public List<BookingResponse> getBookingsByUser(Long userId) {
 
         List<Booking> bookings = bookingRepository.findByUserId(userId);
+
+        return bookings.stream()
+                .map(BookingResponse::new)
+                .toList();
+    }
+
+    public List<BookingResponse> getUpcomingBookings(Long userId) {
+
+        List<Booking> bookings = bookingRepository.findUpcomingByUserId(userId);
+
+        return bookings.stream()
+                .map(BookingResponse::new)
+                .toList();
+    }
+
+    public List<BookingResponse> getPastBookings(Long userId) {
+
+        List<Booking> bookings = bookingRepository.findPastByUserId(userId);
 
         return bookings.stream()
                 .map(BookingResponse::new)
