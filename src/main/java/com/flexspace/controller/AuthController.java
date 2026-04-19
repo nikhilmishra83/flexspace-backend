@@ -3,9 +3,12 @@ package com.flexspace.controller;
 import com.flexspace.common.ApiResponse;
 import com.flexspace.dto.AuthRequest;
 import com.flexspace.dto.AuthResponse;
+import com.flexspace.dto.UserRegistrationRequest;
+import com.flexspace.dto.UserResponse;
 import com.flexspace.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -13,6 +16,8 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+
 
     public AuthController(AuthService authService) {
         this.authService = authService;
@@ -23,4 +28,12 @@ public class AuthController {
         AuthResponse response = authService.login(request);
         return ResponseEntity.ok(new ApiResponse<>(true, "Login successful", response));
     }
+
+    @PostMapping("/register")
+    public ResponseEntity<ApiResponse<UserResponse>> register(@Valid @RequestBody UserRegistrationRequest request) {
+        UserResponse userResponse = authService.register(request);
+
+        return ResponseEntity.ok(new ApiResponse<>(true, "User registered successfully", userResponse));
+    }
+
 }

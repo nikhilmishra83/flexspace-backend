@@ -30,32 +30,42 @@ public class JwtFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
+        String path = request.getRequestURI();
+
+        // ✅ Public endpoints
+        if (path.startsWith("/auth") || path.equals("/health")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String header = request.getHeader("Authorization");
-        if (header == null && !request.getRequestURI().startsWith("/auth")
-                && !request.getRequestURI().equals("/user/register")) {
-            log.warn("Missing Authorization header for request: {}", request.getRequestURI());
+
+        // ❌ No token
+        if (header == null || !header.startsWith("Bearer ")) {
+            log.warn("Missing or invalid Authorization header for: {}", path);
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("Unauthorized");
+            return;
         }
 
-        if (header != null && header.startsWith("Bearer ")) {
+        String token = header.substring(7);
 
-            String token = header.substring(7);
-
-            if (!jwtUtil.validateToken(token)) {
-                SecurityContextHolder.clearContext();
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.getWriter().write("Invalid token");
-                log.warn("Invalid JWT token for request: {}", request.getRequestURI());
-                return;
-            }
-
-            Long userId = jwtUtil.extractUserId(token);
-            log.info("Authenticated request for userId: {}", userId);
-
-            UsernamePasswordAuthenticationToken auth =
-                    new UsernamePasswordAuthenticationToken(userId, null, new ArrayList<>());
-
-            SecurityContextHolder.getContext().setAuthentication(auth);
+        // ❌ Invalid token
+        if (!jwtUtil.validateToken(token)) {
+            SecurityContextHolder.clearContext();
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("Invalid token");
+            log.warn("Invalid JWT token for: {}", path);
+            return;
         }
+
+        // ✅ Valid token
+        Long userId = jwtUtil.extractUserId(token);
+
+        UsernamePasswordAuthenticationToken auth =
+                new UsernamePasswordAuthenticationToken(userId, null, new ArrayList<>());
+
+        SecurityContextHolder.getContext().setAuthentication(auth);
 
         filterChain.doFilter(request, response);
     }

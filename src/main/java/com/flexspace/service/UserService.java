@@ -24,33 +24,6 @@ public class UserService {
         this.jwtUtil = jwtUtil;
     }
 
-    @Transactional
-    public UserResponse register(UserRegistrationRequest request) {
-        userRepository.findByEmail(request.getEmail())
-                .ifPresent(u -> {
-                    throw new BadRequestException("Email already exists");
-                });
-
-        User user = new User();
-        user.setName(request.getName());
-        user.setEmail(request.getEmail());
-        user.setPassword(encoder.encode(request.getPassword()));
-        user.setRole("USER");
-        user.setActive(true);
-
-        User savedUser = userRepository.save(user);
-        if (savedUser.getId() == null) {
-            throw new RuntimeException("User registration failed");
-        }
-
-
-        UserResponse userResponse = new UserResponse(savedUser);
-        String token = jwtUtil.generateToken(savedUser.getId(), savedUser.getEmail(), "USER");
-        userResponse.setToken(token);
-
-
-        return userResponse;
-    }
 
 
 }
